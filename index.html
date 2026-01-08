@@ -9,6 +9,11 @@
         
         html {
             overflow: hidden;
+            cursor: none;
+        }
+        
+        * {
+            cursor: none !important;
         }
         
         body {
@@ -124,7 +129,50 @@
             object-fit: contain;  /* Maintain aspect ratio while filling height */
             user-select: none;
             z-index: 100;
-            pointer-events: auto;
+            pointer-events: auto; /* Enable clicks on house image */
+            cursor: none;
+        }
+
+        .house-click-blocker {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 0;
+            background-color: transparent;
+            z-index: 103;
+            pointer-events: auto; /* Block clicks on top portion */
+            cursor: none;
+        }
+
+        .house-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: red;
+            transform: translateY(-50%);
+            z-index: 101;
+            pointer-events: none;
+            opacity: 0; /* Hide the line but keep it for positioning calculations */
+        }
+
+        /* Individual line height adjustments */
+        #house-line-anni {
+            top: 35%; /* Adjust this value to change the line position (0% = top, 100% = bottom) */
+        }
+
+        #house-line-1 {
+            top: 12%;
+        }
+
+        #house-line-4 {
+            top: 43%;
+        }
+
+        #house-line-2 {
+            top: 25%;
         }
 
         #building1 { 
@@ -140,13 +188,13 @@
             transform: scale(1);
         }
         #anni-building { 
-            left: 350px; 
+            left: 400px; 
             z-index: 2;
             transform-origin: bottom center;
             transform: scale(1);
         }
         #building4 { 
-            left: 700px; 
+            left: 800px; 
             z-index: 1;
             transform-origin: bottom center;
             transform: scale(1);
@@ -190,7 +238,7 @@
             height: 10%;  /* Adjust size as needed */
             width: auto;
             bottom: 25%;  /* Adjust position as needed */
-            left: -15%;    /* Adjust position as needed */
+            left: -25%;    /* Adjust position as needed */
             object-fit: contain;
             user-select: none;
             z-index: 100;
@@ -235,7 +283,7 @@
             height: 12%;  /* Adjust size as needed */
             width: auto;
             bottom: 48.5%;  /* Adjust position as needed */
-            left: 66%;    /* Adjust position as needed */
+            left: 51%;    /* Adjust position as needed */
             object-fit: contain;
             user-select: none;
             z-index: 1;
@@ -291,6 +339,45 @@
                 ground.removeEventListener('transitionend', onTransitionEnd);
                 window.location.href = url;
             }, { once: true });
+        }
+
+        // Position red lines to match house widths and set up click blockers
+        function positionHouseLines() {
+            requestAnimationFrame(function() {
+                const houses = document.querySelectorAll('.house');
+                houses.forEach(function(house) {
+                    const line = house.nextElementSibling;
+                    if (line && line.classList.contains('house-line')) {
+                        const container = house.parentElement;
+                        const containerHeight = container.offsetHeight;
+                        const containerWidth = container.offsetWidth;
+                        
+                        // Set line width to match house width (or container width as fallback)
+                        const houseWidth = house.offsetWidth || containerWidth;
+                        if (houseWidth > 0 && containerHeight > 0) {
+                            line.style.width = houseWidth + 'px';
+                            line.style.left = '0px';
+                            
+                            // Position click blocker to cover top portion (above the line)
+                            const blocker = line.nextElementSibling;
+                            if (blocker && blocker.classList.contains('house-click-blocker')) {
+                                // Get the line's actual position relative to container
+                                const lineRect = line.getBoundingClientRect();
+                                const containerRect = container.getBoundingClientRect();
+                                const lineTopPx = lineRect.top - containerRect.top + (lineRect.height / 2); // Use center of line
+                                
+                                // Position from top to line center (blocks clicks above the line)
+                                blocker.style.top = '0px';
+                                blocker.style.bottom = '';
+                                blocker.style.height = lineTopPx + 'px';
+                                blocker.style.width = houseWidth + 'px';
+                                blocker.style.left = '0px';
+                                blocker.style.display = 'block'; // Ensure it's visible
+                            }
+                        }
+                    }
+                });
+            });
         }
 
         // Loading screen functionality - ground animation (reversed)
@@ -381,6 +468,9 @@
                         
                         // Clear the saved position after restoring
                         sessionStorage.removeItem('cityScrollPosition');
+                        
+                        // Position house lines after layout is restored
+                        positionHouseLines();
                     }, 100);
                 }
             }
@@ -413,6 +503,55 @@
             }, 5000);
         });
 
+        // Setup house click handlers after images are loaded
+        window.addEventListener('load', function() {
+            // Click handlers for house images (only bottom portions will be clickable due to blockers)
+            const house1 = document.querySelector('#building1 .house');
+            const house2 = document.querySelector('#building2 .house');
+            const anniHouse = document.querySelector('#anni-building .house');
+            const house4 = document.querySelector('#building4 .house');
+            
+            if (house1) {
+                house1.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    navigateWithTransition('project3.html');
+                });
+            }
+            
+            if (house2) {
+                house2.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    navigateWithTransition('project2.html');
+                });
+            }
+            
+            if (anniHouse) {
+                anniHouse.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    navigateWithTransition('project1.html');
+                });
+            }
+            
+            if (house4) {
+                house4.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    navigateWithTransition('project4.html');
+                });
+            }
+
+            // Position lines after images are loaded - with retry
+            positionHouseLines();
+            // Retry after a short delay to ensure dimensions are calculated
+            setTimeout(positionHouseLines, 100);
+            setTimeout(positionHouseLines, 500);
+            // Also position on window resize
+            window.addEventListener('resize', positionHouseLines);
+        });
+
         // Add click handlers for buildings, set logo, and wire up custom cursor - wait for DOM to load
         document.addEventListener('DOMContentLoaded', function() {
             // Build the animated cursor element
@@ -441,8 +580,8 @@
                 targetY = e.clientY;
             });
 
-            // Toggle hover state on interactive elements
-            const hoverTargets = document.querySelectorAll('.building-container, .house');
+            // Toggle hover state on interactive elements (house images)
+            const hoverTargets = document.querySelectorAll('.house');
             hoverTargets.forEach(el => {
                 el.addEventListener('mouseenter', () => cursor.classList.add('is-hovering'));
                 el.addEventListener('mouseleave', () => cursor.classList.remove('is-hovering'));
@@ -453,58 +592,6 @@
             if (titleImg) {
                 titleImg.src = `resources/namelogo3.svg`;
             }
-            
-            // Add click handlers to building containers
-            document.getElementById('building1').addEventListener('click', function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                navigateWithTransition('project3.html');
-            });
-
-            document.getElementById('building2').addEventListener('click', function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                navigateWithTransition('project2.html');
-            });
-
-            document.getElementById('anni-building').addEventListener('click', function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                navigateWithTransition('project1.html');
-            });
-
-            document.getElementById('building4').addEventListener('click', function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                navigateWithTransition('project4.html');
-            });
-
-            // Also add click handlers to house images in case they block the container
-            const house1 = document.querySelector('#building1 .house');
-            const house2 = document.querySelector('#building2 .house');
-            const anniHouse = document.querySelector('#anni-building .house');
-            const house4 = document.querySelector('#building4 .house');
-
-            if (house1) house1.addEventListener('click', function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                navigateWithTransition('project3.html');
-            });
-            if (house2) house2.addEventListener('click', function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                navigateWithTransition('project2.html');
-            });
-            if (anniHouse) anniHouse.addEventListener('click', function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                navigateWithTransition('project1.html');
-            });
-            if (house4) house4.addEventListener('click', function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                navigateWithTransition('project4.html');
-            });
         });
     </script>
 </head>
@@ -518,6 +605,8 @@
     <div class="scene-container">
         <div id="anni-building" class="building-container">
             <img src="resources/house 3.png" class="house" alt="Anni House">
+            <div id="house-line-anni" class="house-line"></div>
+            <div id="house-blocker-anni" class="house-click-blocker"></div>
             <img src="resources/click.gif" class="click" alt="Click">
             <img src="resources/birds.gif" class="birds" alt="Birds">
             <img src="resources/butterfly.gif" class="butterfly" alt="Butterfly">
@@ -525,15 +614,21 @@
         
         <div id="building1" class="building-container">
             <img src="resources/house 1.png" class="house" alt="House 1">
+            <div id="house-line-1" class="house-line"></div>
+            <div id="house-blocker-1" class="house-click-blocker"></div>
             <img src="resources/palmtree.gif" class="palmtree" alt="Palm tree">
         </div>
         
         <div id="building4" class="building-container">
             <img src="resources/house 4.png" class="house" alt="House 4">
+            <div id="house-line-4" class="house-line"></div>
+            <div id="house-blocker-4" class="house-click-blocker"></div>
         </div>
         
         <div id="building2" class="building-container">
             <img src="resources/house 2.png" class="house" alt="House 2">
+            <div id="house-line-2" class="house-line"></div>
+            <div id="house-blocker-2" class="house-click-blocker"></div>
             <img src="resources/sixten.gif" class="sixten" alt="Sixten">
         </div>
         
@@ -542,3 +637,4 @@
     </div>
 </body>
 </html>
+
