@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         @font-face {
             font-family: 'printf';
@@ -37,6 +38,31 @@
             z-index: 1999;
         }
         
+        /* Loading indicator - grey line that fills with white */
+        .loading-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 2px;
+            background-color: #666;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .loading-indicator.loading {
+            opacity: 1;
+        }
+        
+        .loading-indicator-fill {
+            height: 100%;
+            width: 0%;
+            background-color: white;
+            transition: width 0.3s ease;
+        }
+        
         
         /* Custom cursor: outer follows position, inner handles scale transition */
         .custom-cursor {
@@ -48,17 +74,18 @@
             transform: translate3d(-100px, -100px, 0);
         }
         .custom-cursor .custom-cursor-shape {
-            width: 16px;
-            height: 16px;
-            margin-left: -8px;
-            margin-top: -8px;
-            background: rgba(255, 255, 255, 0.95);
+            width: 12px;
+            height: 12px;
+            margin-left: -6px;
+            margin-top: -6px;
+            background: rgb(255, 255, 255);
             border-radius: 0;
             transform: scale(1);
             transition: transform 320ms ease, background 320ms ease, border-radius 320ms ease;
         }
         .custom-cursor.is-hovering .custom-cursor-shape {
-            transform: scale(1.45);
+            transform: scale(2);
+            background: rgb(255, 0, 0);
         }
 
         .background-image {
@@ -83,6 +110,18 @@
             z-index: 0;
             pointer-events: none;
             transform: scaleX(-1);
+        }
+        
+        /* Fallback background for browsers that don't support the video */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgb(0, 0, 0);
+            z-index: -1;
         }
         
         .scene-container {
@@ -288,29 +327,126 @@
             user-select: none;
             z-index: 1;
         }
+
+        /* ============================================
+           MOBILE-SPECIFIC STYLES
+           Keep horizontal scroll but optimize for mobile
+           ============================================ */
+        @media screen and (max-width: 768px) {
+            /* Keep horizontal scroll but enable touch scrolling */
+            html {
+                overflow: hidden;
+                cursor: auto;
+            }
+            
+            * {
+                cursor: auto !important;
+            }
+            
+            body {
+                overflow-x: auto;
+                overflow-y: hidden;
+                height: 100vh;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* Hide custom cursor on mobile */
+            .custom-cursor {
+                display: none !important;
+            }
+            
+            /* Adjust scene container width for mobile - scale down proportionally */
+            .scene-container {
+                width: calc(1200px + 40vh + 100px); /* Scaled down from desktop */
+            }
+            
+            /* Adjust building positions for mobile - scale down */
+            #anni-building { 
+                left: 250px; /* Scaled from 400px */
+            }
+            
+            #building4 { 
+                left: 500px; /* Scaled from 800px */
+            }
+            
+            #building1 { 
+                left: 750px; /* Scaled from 1150px */
+            }
+            
+            #building2 { 
+                left: 1000px; /* Scaled from 1600px */
+            }
+            
+            /* Adjust building container width for mobile */
+            .building-container {
+                width: 35vh; /* Slightly smaller than desktop 48vh */
+            }
+            
+            /* Adjust car size for mobile */
+            .car {
+                height: 6vh;
+                bottom: 9.9vh;
+            }
+            
+            /* Adjust ground height for mobile */
+            .ground {
+                height: 10vh;
+            }
+            
+            /* Title adjustments for mobile */
+            .title {
+                width: calc(100% - 40px);
+            }
+            
+            /* Loading indicator - adjust for mobile */
+            .loading-indicator {
+                width: 80%;
+                max-width: 250px;
+            }
+        }
+        
+        /* Tablet adjustments */
+        @media screen and (min-width: 769px) and (max-width: 1024px) {
+            .scene-container {
+                width: calc(1200px + 40vh + 100px);
+            }
+            
+            #building1 { left: 900px; }
+            #building2 { left: 1300px; }
+            #anni-building { left: 300px; }
+            #building4 { left: 600px; }
+        }
     </style>
     <script>
-        window.addEventListener('wheel', function(e) {
-            e.preventDefault();
-            
-            document.body.scrollLeft += e.deltaY;
-
-            // Get the current scroll position and the full horizontal scrollable range
+        // Function to detect if device is mobile (check dynamically)
+        function isMobileDevice() {
+            // Check user agent
+            const userAgentMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            // Check viewport width
+            const viewportMobile = window.innerWidth <= 768;
+            // Use media query as additional check
+            const mediaQueryMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+            return userAgentMobile || viewportMobile || mediaQueryMobile;
+        }
+        
+        // Detect if device is mobile (initial check)
+        const isMobile = isMobileDevice();
+        
+        // Function to update car and building positions based on horizontal scroll
+        function updateScrollEffects() {
             const scrolled = document.body.scrollLeft;
             const bodyScrollWidth = document.body.scrollWidth;
             const maxScroll = Math.max(bodyScrollWidth - window.innerWidth, 0);
             
-            // Calculate car position relative to scroll progress,
-            // ensuring it reaches the end exactly when scrolling reaches its end
+            // Calculate car position relative to scroll progress
             const car = document.getElementById('car');
             if (car && maxScroll > 0) {
                 const clampedScroll = Math.min(Math.max(scrolled, 0), maxScroll);
-                const progress = clampedScroll / maxScroll; // 0 → start, 1 → end of scroll
-                const maxCarTravel = window.innerWidth - car.offsetWidth - 30; // from initial left to right edge
+                const progress = clampedScroll / maxScroll;
+                const maxCarTravel = window.innerWidth - car.offsetWidth - 30;
                 const carPosition = progress * maxCarTravel;
                 car.style.transform = `translateX(${carPosition}px)`;
             } else if (car) {
-                // No horizontal scroll available, keep car at start
                 car.style.transform = 'translateX(0px)';
             }
 
@@ -320,15 +456,53 @@
             const anniBuilding = document.getElementById('anni-building');
             const building4 = document.getElementById('building4');
             
-            building1.style.transform = `translateX(${scrolled * -0.3}px)`;  // Billboard will move with this
-            building2.style.transform = `translateX(${scrolled * 0}px)`;
-            anniBuilding.style.transform = `translateX(${scrolled * 0.1}px)`;
-            building4.style.transform = `translateX(${scrolled * 0.2}px)`;
-        }, { passive: false });
+            if (building1) building1.style.transform = `translateX(${scrolled * -0.3}px)`;
+            if (building2) building2.style.transform = `translateX(${scrolled * 0}px)`;
+            if (anniBuilding) anniBuilding.style.transform = `translateX(${scrolled * 0.1}px)`;
+            if (building4) building4.style.transform = `translateX(${scrolled * 0.2}px)`;
+        }
+        
+        // Desktop: wheel event for horizontal scroll
+        if (!isMobile) {
+            window.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                document.body.scrollLeft += e.deltaY;
+                updateScrollEffects();
+            }, { passive: false });
+        } else {
+            // Mobile: handle touch scrolling and update effects on scroll
+            window.addEventListener('scroll', function() {
+                updateScrollEffects();
+            }, { passive: true });
+            
+            // Also handle touch gestures for smoother horizontal scrolling
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let scrollStartX = 0;
+            
+            document.body.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                scrollStartX = document.body.scrollLeft;
+            }, { passive: true });
+            
+            document.body.addEventListener('touchmove', function(e) {
+                const touchX = e.touches[0].clientX;
+                const touchY = e.touches[0].clientY;
+                const deltaX = touchStartX - touchX;
+                const deltaY = touchStartY - touchY;
+                
+                // If horizontal movement is greater than vertical, allow horizontal scroll
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    document.body.scrollLeft = scrollStartX + deltaX;
+                    updateScrollEffects();
+                }
+            }, { passive: true });
+        }
 
         // Function to handle navigation with ground expansion
         function navigateWithTransition(url) {
-            // Save current scroll position before navigating
+            // Save current horizontal scroll position before navigating
             sessionStorage.setItem('cityScrollPosition', document.body.scrollLeft.toString());
             
             const ground = document.querySelector('.ground');
@@ -394,14 +568,36 @@
             const body = document.body;
             const images = document.querySelectorAll('img');
             const video = document.querySelector('.background-video');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const loadingIndicatorFill = document.getElementById('loading-indicator-fill');
             
             let imagesLoaded = 0;
             let videoLoaded = false;
+            let isLoadingComplete = false;
+            let showIndicatorTimeout = null;
             const totalImages = images.length;
+            const totalAssets = totalImages + (video ? 1 : 0);
+            
+            // Show loading indicator after 1 second if still loading
+            showIndicatorTimeout = setTimeout(function() {
+                if (!isLoadingComplete && loadingIndicator) {
+                    loadingIndicator.classList.add('loading');
+                }
+            }, 1000);
+            
+            // Update loading progress
+            function updateProgress() {
+                let loaded = imagesLoaded + (videoLoaded ? 1 : 0);
+                const progress = totalAssets > 0 ? (loaded / totalAssets) * 100 : 0;
+                if (loadingIndicatorFill) {
+                    loadingIndicatorFill.style.width = progress + '%';
+                }
+            }
             
             // Check if all images are loaded
             function checkImageLoad() {
                 imagesLoaded++;
+                updateProgress();
                 if (imagesLoaded === totalImages && videoLoaded) {
                     hideLoadingScreen();
                 }
@@ -411,12 +607,14 @@
             function checkVideoLoad() {
                 if (video.readyState >= 3) { // HAVE_FUTURE_DATA or higher
                     videoLoaded = true;
+                    updateProgress();
                     if (imagesLoaded === totalImages) {
                         hideLoadingScreen();
                     }
                 } else {
                     video.addEventListener('canplaythrough', function() {
                         videoLoaded = true;
+                        updateProgress();
                         if (imagesLoaded === totalImages) {
                             hideLoadingScreen();
                         }
@@ -425,6 +623,18 @@
             }
             
             function hideLoadingScreen() {
+                isLoadingComplete = true;
+                
+                // Clear the timeout if loading completes before 1 second
+                if (showIndicatorTimeout) {
+                    clearTimeout(showIndicatorTimeout);
+                }
+                
+                // Hide loading indicator if it was shown
+                if (loadingIndicator) {
+                    loadingIndicator.classList.remove('loading');
+                }
+                
                 // Remove loading class from ground to trigger reverse animation
                 if (ground) {
                     ground.classList.remove('loading');
@@ -439,8 +649,10 @@
                 if (savedScrollPosition !== null) {
                     // Wait a bit for the page to fully render before restoring scroll
                     setTimeout(() => {
+                        // Restore horizontal scroll (works for both mobile and desktop)
                         document.body.scrollLeft = parseInt(savedScrollPosition, 10);
-                        // Also update building positions based on scroll
+                        
+                        // Update building positions and car based on scroll
                         const scrolled = document.body.scrollLeft;
                         const building1 = document.getElementById('building1');
                         const building2 = document.getElementById('building2');
@@ -466,11 +678,11 @@
                             }
                         }
                         
-                        // Clear the saved position after restoring
-                        sessionStorage.removeItem('cityScrollPosition');
-                        
                         // Position house lines after layout is restored
                         positionHouseLines();
+                        
+                        // Clear the saved position after restoring
+                        sessionStorage.removeItem('cityScrollPosition');
                     }, 100);
                 }
             }
@@ -498,7 +710,11 @@
             // Fallback: hide loading screen after max 5 seconds even if not everything loaded
             setTimeout(function() {
                 if (!body.classList.contains('loaded')) {
-                    hideLoadingScreen();
+                    // Ensure progress is at 100% before hiding
+                    if (loadingIndicatorFill) {
+                        loadingIndicatorFill.style.width = '100%';
+                    }
+                    setTimeout(hideLoadingScreen, 300); // Small delay to show 100%
                 }
             }, 5000);
         });
@@ -554,50 +770,85 @@
 
         // Add click handlers for buildings, set logo, and wire up custom cursor - wait for DOM to load
         document.addEventListener('DOMContentLoaded', function() {
-            // Build the animated cursor element
-            const cursor = document.createElement('div');
-            cursor.className = 'custom-cursor';
-            const cursorShape = document.createElement('div');
-            cursorShape.className = 'custom-cursor-shape';
-            cursor.appendChild(cursorShape);
-            document.body.appendChild(cursor);
+            // Only create custom cursor on desktop
+            if (!isMobile) {
+                // Build the animated cursor element
+                const cursor = document.createElement('div');
+                cursor.className = 'custom-cursor';
+                const cursorShape = document.createElement('div');
+                cursorShape.className = 'custom-cursor-shape';
+                cursor.appendChild(cursorShape);
+                document.body.appendChild(cursor);
 
-            // Track the cursor position with a small easing for smoothness
-            let cursorX = -100, cursorY = -100;
-            let targetX = -100, targetY = -100;
+                // Track the cursor position with a small easing for smoothness
+                let cursorX = -100, cursorY = -100;
+                let targetX = -100, targetY = -100;
 
-            function renderCursor() {
-                // simple lerp to soften movement
-                cursorX += (targetX - cursorX) * 0.35;
-                cursorY += (targetY - cursorY) * 0.35;
-                cursor.style.transform = `translate3d(${cursorX}px, ${cursorY}px, 0)`;
-                requestAnimationFrame(renderCursor);
+                function renderCursor() {
+                    // simple lerp to soften movement
+                    cursorX += (targetX - cursorX) * 0.35;
+                    cursorY += (targetY - cursorY) * 0.35;
+                    cursor.style.transform = `translate3d(${cursorX}px, ${cursorY}px, 0)`;
+                    requestAnimationFrame(renderCursor);
+                }
+                renderCursor();
+
+                document.addEventListener('mousemove', (e) => {
+                    targetX = e.clientX;
+                    targetY = e.clientY;
+                });
+
+                // Toggle hover state on interactive elements (house images)
+                const hoverTargets = document.querySelectorAll('.house');
+                hoverTargets.forEach(el => {
+                    el.addEventListener('mouseenter', () => cursor.classList.add('is-hovering'));
+                    el.addEventListener('mouseleave', () => cursor.classList.remove('is-hovering'));
+                });
             }
-            renderCursor();
 
-            document.addEventListener('mousemove', (e) => {
-                targetX = e.clientX;
-                targetY = e.clientY;
-            });
-
-            // Toggle hover state on interactive elements (house images)
-            const hoverTargets = document.querySelectorAll('.house');
-            hoverTargets.forEach(el => {
-                el.addEventListener('mouseenter', () => cursor.classList.add('is-hovering'));
-                el.addEventListener('mouseleave', () => cursor.classList.remove('is-hovering'));
-            });
-
-            // Set logo to namelogo3
-            const titleImg = document.querySelector('.title');
-            if (titleImg) {
-                titleImg.src = `resources/namelogo3.svg`;
+            // Function to set logo based on mobile/desktop
+            function setLogo() {
+                const titleImg = document.querySelector('.title');
+                if (titleImg) {
+                    const isMobile = isMobileDevice();
+                    titleImg.src = isMobile ? `resources/namelogo_mobile.svg` : `resources/namelogo.svg`;
+                }
+            }
+            
+            // Set logo initially
+            setLogo();
+            
+            // Update logo on window resize
+            window.addEventListener('resize', setLogo);
+            
+            // Also listen to media query changes for more reliable detection
+            if (window.matchMedia) {
+                const mediaQuery = window.matchMedia('(max-width: 768px)');
+                mediaQuery.addEventListener('change', setLogo);
+            }
+            
+            // Handle background video loading for Chrome compatibility
+            const backgroundVideo = document.querySelector('.background-video');
+            if (backgroundVideo) {
+                // Check if video can play - Chrome doesn't support .mov files
+                backgroundVideo.addEventListener('error', function() {
+                    // If video fails to load, hide it so background shows through
+                    backgroundVideo.style.display = 'none';
+                }, true);
+                
+                // Also check after a short delay if video hasn't started playing
+                setTimeout(function() {
+                    if (backgroundVideo.readyState === 0 || backgroundVideo.readyState === 1) {
+                        // Video hasn't loaded or can't play
+                        backgroundVideo.style.display = 'none';
+                    }
+                }, 2000);
             }
         });
     </script>
 </head>
 <body class="loading">
-    <video class="background-video" autoplay loop muted playsinline>
-        <source src="resources/clouds.mov" type="video/quicktime">
+    <video class="background-video" autoplay loop muted playsinline webkit-playsinline preload="auto">
         <source src="resources/clouds.mp4" type="video/mp4">
     </video>
     <img src="" class="title" alt="Title">
@@ -634,6 +885,9 @@
         
         <img src="resources/car.png" class="car" id="car" alt="Car">
         <div class="ground loading"></div>
+    </div>
+    <div class="loading-indicator" id="loading-indicator">
+        <div class="loading-indicator-fill" id="loading-indicator-fill"></div>
     </div>
 </body>
 </html>
