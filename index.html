@@ -452,19 +452,39 @@
             });
         }
         
-        // Loading screen functionality - ground animation (reversed)
-        // Ensure ground starts in loading state immediately
-        document.addEventListener('DOMContentLoaded', function() {
+        // Function to initialize ground animation
+        function initializeGroundAnimation() {
             const ground = document.querySelector('.ground');
             
             if (ground) {
+                // Reset the ground to loading state
+                ground.classList.remove('expanding');
                 ground.classList.add('loading');
                 // Force a reflow to ensure the browser applies the 100vh state
                 ground.offsetHeight;
             }
             
+            // Reset the trigger flag so animation can run again
+            groundAnimationTriggered = false;
+            
             // Use the animation function
             setTimeout(animateGroundDown, 600);
+        }
+        
+        // Loading screen functionality - ground animation (reversed)
+        // Ensure ground starts in loading state immediately
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeGroundAnimation();
+        });
+        
+        // Handle page restoration from back/forward cache (bfcache)
+        // This ensures the ground animation plays when using browser back button
+        window.addEventListener('pageshow', function(event) {
+            // event.persisted is true when page is restored from bfcache
+            if (event.persisted) {
+                // Reset and re-trigger the ground animation
+                initializeGroundAnimation();
+            }
         });
         
         window.addEventListener('load', function() {
