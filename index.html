@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         @font-face {
             font-family: 'printf';
@@ -25,7 +24,6 @@
             position: relative;
             overflow-x: auto;
             overflow-y: hidden;
-            -webkit-overflow-scrolling: touch;
             overscroll-behavior: none;
             overscroll-behavior-x: none;
             overscroll-behavior-y: none;
@@ -34,35 +32,14 @@
         
         /* Loading screen - ground starts expanded and shrinks down */
         .ground.loading {
-            height: 100vh;
+            height: 100vh !important;
             z-index: 1999;
         }
         
-        /* Loading indicator - grey line that fills with white */
-        .loading-indicator {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 300px;
-            height: 2px;
-            background-color: #666;
-            z-index: 2000;
-            opacity: 0;
-            transition: opacity 0.3s ease;
+        /* Ensure ground returns to normal height when loading is removed */
+        .ground:not(.loading):not(.expanding) {
+            height: 10vh !important;
         }
-        
-        .loading-indicator.loading {
-            opacity: 1;
-        }
-        
-        .loading-indicator-fill {
-            height: 100%;
-            width: 0%;
-            background-color: white;
-            transition: width 0.3s ease;
-        }
-        
         
         /* Custom cursor: outer follows position, inner handles scale transition */
         .custom-cursor {
@@ -74,18 +51,43 @@
             transform: translate3d(-100px, -100px, 0);
         }
         .custom-cursor .custom-cursor-shape {
+            position: absolute;
+            top: 50%;
+            left: 0;
             width: 12px;
             height: 12px;
-            margin-left: -6px;
-            margin-top: -6px;
+            margin: 0;
             background: rgb(255, 255, 255);
             border-radius: 0;
-            transform: scale(1);
-            transition: transform 320ms ease, background 320ms ease, border-radius 320ms ease;
+            transform: translateY(-50%);
+            box-sizing: border-box;
+            overflow: hidden;
+            transition: width 320ms ease, height 320ms ease, padding 320ms ease, transform 320ms ease, background 320ms ease, border-radius 320ms ease;
+        }
+        .custom-cursor .custom-cursor-text {
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            font-family: 'Avenir', 'Avenir Next', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 12px;
+            font-weight: bold;
+            color: rgb(0, 0, 0);
+            transition: opacity 320ms ease;
+            line-height: 1;
         }
         .custom-cursor.is-hovering .custom-cursor-shape {
-            transform: scale(2);
-            background: rgb(255, 0, 0);
+            width: max-content;
+            height: 24px;
+            padding: 4px 8px;
+            transform: translateY(-50%);
+            background: rgb(255, 255, 255);
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            overflow: hidden;
+        }
+        .custom-cursor.is-hovering .custom-cursor-text {
+            opacity: 1;
         }
 
         .background-image {
@@ -328,109 +330,8 @@
             z-index: 1;
         }
 
-        /* ============================================
-           MOBILE-SPECIFIC STYLES
-           Keep horizontal scroll but optimize for mobile
-           ============================================ */
-        @media screen and (max-width: 768px) {
-            /* Keep horizontal scroll but enable touch scrolling */
-            html {
-                overflow: hidden;
-                cursor: auto;
-            }
-            
-            * {
-                cursor: auto !important;
-            }
-            
-            body {
-                overflow-x: auto;
-                overflow-y: hidden;
-                height: 100vh;
-                -webkit-overflow-scrolling: touch;
-            }
-            
-            /* Hide custom cursor on mobile */
-            .custom-cursor {
-                display: none !important;
-            }
-            
-            /* Adjust scene container width for mobile - scale down proportionally */
-            .scene-container {
-                width: calc(1200px + 40vh + 100px); /* Scaled down from desktop */
-            }
-            
-            /* Adjust building positions for mobile - scale down */
-            #anni-building { 
-                left: 250px; /* Scaled from 400px */
-            }
-            
-            #building4 { 
-                left: 500px; /* Scaled from 800px */
-            }
-            
-            #building1 { 
-                left: 750px; /* Scaled from 1150px */
-            }
-            
-            #building2 { 
-                left: 1000px; /* Scaled from 1600px */
-            }
-            
-            /* Adjust building container width for mobile */
-            .building-container {
-                width: 35vh; /* Slightly smaller than desktop 48vh */
-            }
-            
-            /* Adjust car size for mobile */
-            .car {
-                height: 6vh;
-                bottom: 9.9vh;
-            }
-            
-            /* Adjust ground height for mobile */
-            .ground {
-                height: 10vh;
-            }
-            
-            /* Title adjustments for mobile */
-            .title {
-                width: calc(100% - 40px);
-            }
-            
-            /* Loading indicator - adjust for mobile */
-            .loading-indicator {
-                width: 80%;
-                max-width: 250px;
-            }
-        }
-        
-        /* Tablet adjustments */
-        @media screen and (min-width: 769px) and (max-width: 1024px) {
-            .scene-container {
-                width: calc(1200px + 40vh + 100px);
-            }
-            
-            #building1 { left: 900px; }
-            #building2 { left: 1300px; }
-            #anni-building { left: 300px; }
-            #building4 { left: 600px; }
-        }
     </style>
     <script>
-        // Function to detect if device is mobile (check dynamically)
-        function isMobileDevice() {
-            // Check user agent
-            const userAgentMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            // Check viewport width
-            const viewportMobile = window.innerWidth <= 768;
-            // Use media query as additional check
-            const mediaQueryMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
-            return userAgentMobile || viewportMobile || mediaQueryMobile;
-        }
-        
-        // Detect if device is mobile (initial check)
-        const isMobile = isMobileDevice();
         
         // Function to update car and building positions based on horizontal scroll
         function updateScrollEffects() {
@@ -462,43 +363,12 @@
             if (building4) building4.style.transform = `translateX(${scrolled * 0.2}px)`;
         }
         
-        // Desktop: wheel event for horizontal scroll
-        if (!isMobile) {
-            window.addEventListener('wheel', function(e) {
-                e.preventDefault();
-                document.body.scrollLeft += e.deltaY;
-                updateScrollEffects();
-            }, { passive: false });
-        } else {
-            // Mobile: handle touch scrolling and update effects on scroll
-            window.addEventListener('scroll', function() {
-                updateScrollEffects();
-            }, { passive: true });
-            
-            // Also handle touch gestures for smoother horizontal scrolling
-            let touchStartX = 0;
-            let touchStartY = 0;
-            let scrollStartX = 0;
-            
-            document.body.addEventListener('touchstart', function(e) {
-                touchStartX = e.touches[0].clientX;
-                touchStartY = e.touches[0].clientY;
-                scrollStartX = document.body.scrollLeft;
-            }, { passive: true });
-            
-            document.body.addEventListener('touchmove', function(e) {
-                const touchX = e.touches[0].clientX;
-                const touchY = e.touches[0].clientY;
-                const deltaX = touchStartX - touchX;
-                const deltaY = touchStartY - touchY;
-                
-                // If horizontal movement is greater than vertical, allow horizontal scroll
-                if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                    document.body.scrollLeft = scrollStartX + deltaX;
-                    updateScrollEffects();
-                }
-            }, { passive: true });
-        }
+        // Wheel event for horizontal scroll
+        window.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            document.body.scrollLeft += e.deltaY;
+            updateScrollEffects();
+        }, { passive: false });
 
         // Function to handle navigation with ground expansion
         function navigateWithTransition(url) {
@@ -554,13 +424,47 @@
             });
         }
 
+        // Ground animation state - prevent multiple triggers
+        let groundAnimationTriggered = false;
+        
+        // Function to animate ground down - ensures it only happens once
+        // Defined in global scope so it's accessible everywhere
+        function animateGroundDown() {
+            const ground = document.querySelector('.ground');
+            if (!ground) return;
+            
+            // Use the guard to prevent multiple triggers
+            if (groundAnimationTriggered) return;
+            if (ground.classList.contains('expanding')) return;
+            groundAnimationTriggered = true;
+            
+            // Ensure it's in loading state first
+            if (!ground.classList.contains('loading')) {
+                ground.classList.add('loading');
+                ground.offsetHeight; // Force reflow
+            }
+            
+            // Then animate down
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    ground.classList.remove('loading');
+                });
+            });
+        }
+        
         // Loading screen functionality - ground animation (reversed)
         // Ensure ground starts in loading state immediately
         document.addEventListener('DOMContentLoaded', function() {
             const ground = document.querySelector('.ground');
+            
             if (ground) {
                 ground.classList.add('loading');
+                // Force a reflow to ensure the browser applies the 100vh state
+                ground.offsetHeight;
             }
+            
+            // Use the animation function
+            setTimeout(animateGroundDown, 600);
         });
         
         window.addEventListener('load', function() {
@@ -568,36 +472,16 @@
             const body = document.body;
             const images = document.querySelectorAll('img');
             const video = document.querySelector('.background-video');
-            const loadingIndicator = document.getElementById('loading-indicator');
-            const loadingIndicatorFill = document.getElementById('loading-indicator-fill');
             
             let imagesLoaded = 0;
             let videoLoaded = false;
             let isLoadingComplete = false;
-            let showIndicatorTimeout = null;
             const totalImages = images.length;
             const totalAssets = totalImages + (video ? 1 : 0);
-            
-            // Show loading indicator after 1 second if still loading
-            showIndicatorTimeout = setTimeout(function() {
-                if (!isLoadingComplete && loadingIndicator) {
-                    loadingIndicator.classList.add('loading');
-                }
-            }, 1000);
-            
-            // Update loading progress
-            function updateProgress() {
-                let loaded = imagesLoaded + (videoLoaded ? 1 : 0);
-                const progress = totalAssets > 0 ? (loaded / totalAssets) * 100 : 0;
-                if (loadingIndicatorFill) {
-                    loadingIndicatorFill.style.width = progress + '%';
-                }
-            }
             
             // Check if all images are loaded
             function checkImageLoad() {
                 imagesLoaded++;
-                updateProgress();
                 if (imagesLoaded === totalImages && videoLoaded) {
                     hideLoadingScreen();
                 }
@@ -607,14 +491,12 @@
             function checkVideoLoad() {
                 if (video.readyState >= 3) { // HAVE_FUTURE_DATA or higher
                     videoLoaded = true;
-                    updateProgress();
                     if (imagesLoaded === totalImages) {
                         hideLoadingScreen();
                     }
                 } else {
                     video.addEventListener('canplaythrough', function() {
                         videoLoaded = true;
-                        updateProgress();
                         if (imagesLoaded === totalImages) {
                             hideLoadingScreen();
                         }
@@ -625,20 +507,10 @@
             function hideLoadingScreen() {
                 isLoadingComplete = true;
                 
-                // Clear the timeout if loading completes before 1 second
-                if (showIndicatorTimeout) {
-                    clearTimeout(showIndicatorTimeout);
-                }
-                
-                // Hide loading indicator if it was shown
-                if (loadingIndicator) {
-                    loadingIndicator.classList.remove('loading');
-                }
-                
                 // Remove loading class from ground to trigger reverse animation
+                const ground = document.querySelector('.ground');
                 if (ground) {
                     ground.classList.remove('loading');
-                    // Ground z-index is already set in CSS to stay on top
                 }
                 
                 body.classList.remove('loading');
@@ -649,7 +521,7 @@
                 if (savedScrollPosition !== null) {
                     // Wait a bit for the page to fully render before restoring scroll
                     setTimeout(() => {
-                        // Restore horizontal scroll (works for both mobile and desktop)
+                        // Restore horizontal scroll
                         document.body.scrollLeft = parseInt(savedScrollPosition, 10);
                         
                         // Update building positions and car based on scroll
@@ -707,14 +579,10 @@
                 }
             }
             
-            // Fallback: hide loading screen after max 5 seconds even if not everything loaded
+            // Timeout fallback
             setTimeout(function() {
                 if (!body.classList.contains('loaded')) {
-                    // Ensure progress is at 100% before hiding
-                    if (loadingIndicatorFill) {
-                        loadingIndicatorFill.style.width = '100%';
-                    }
-                    setTimeout(hideLoadingScreen, 300); // Small delay to show 100%
+                    hideLoadingScreen();
                 }
             }, 5000);
         });
@@ -770,61 +638,64 @@
 
         // Add click handlers for buildings, set logo, and wire up custom cursor - wait for DOM to load
         document.addEventListener('DOMContentLoaded', function() {
-            // Only create custom cursor on desktop
-            if (!isMobile) {
-                // Build the animated cursor element
-                const cursor = document.createElement('div');
-                cursor.className = 'custom-cursor';
-                const cursorShape = document.createElement('div');
-                cursorShape.className = 'custom-cursor-shape';
-                cursor.appendChild(cursorShape);
-                document.body.appendChild(cursor);
+            // Build the animated cursor element
+            const cursor = document.createElement('div');
+            cursor.className = 'custom-cursor';
+            const cursorShape = document.createElement('div');
+            cursorShape.className = 'custom-cursor-shape';
+            const cursorText = document.createElement('div');
+            cursorText.className = 'custom-cursor-text';
+            cursorShape.appendChild(cursorText);
+            cursor.appendChild(cursorShape);
+            document.body.appendChild(cursor);
 
-                // Track the cursor position with a small easing for smoothness
-                let cursorX = -100, cursorY = -100;
-                let targetX = -100, targetY = -100;
+            // Map building IDs to project names
+            const projectNames = {
+                'anni-building': 'ANNI SUSHI',
+                'building1': 'LOTTA HASSELBLAD',
+                'building2': 'PROJECT 2',
+                'building4': 'PROJECT 4'
+            };
 
-                function renderCursor() {
-                    // simple lerp to soften movement
-                    cursorX += (targetX - cursorX) * 0.35;
-                    cursorY += (targetY - cursorY) * 0.35;
-                    cursor.style.transform = `translate3d(${cursorX}px, ${cursorY}px, 0)`;
-                    requestAnimationFrame(renderCursor);
-                }
-                renderCursor();
+            // Track the cursor position with a small easing for smoothness
+            let cursorX = -100, cursorY = -100;
+            let targetX = -100, targetY = -100;
 
-                document.addEventListener('mousemove', (e) => {
-                    targetX = e.clientX;
-                    targetY = e.clientY;
-                });
-
-                // Toggle hover state on interactive elements (house images)
-                const hoverTargets = document.querySelectorAll('.house');
-                hoverTargets.forEach(el => {
-                    el.addEventListener('mouseenter', () => cursor.classList.add('is-hovering'));
-                    el.addEventListener('mouseleave', () => cursor.classList.remove('is-hovering'));
-                });
+            function renderCursor() {
+                // simple lerp to soften movement
+                cursorX += (targetX - cursorX) * 0.35;
+                cursorY += (targetY - cursorY) * 0.35;
+                cursor.style.transform = `translate3d(${cursorX}px, ${cursorY}px, 0)`;
+                requestAnimationFrame(renderCursor);
             }
+            renderCursor();
 
-            // Function to set logo based on mobile/desktop
-            function setLogo() {
-                const titleImg = document.querySelector('.title');
-                if (titleImg) {
-                    const isMobile = isMobileDevice();
-                    titleImg.src = isMobile ? `resources/namelogo_mobile.svg` : `resources/namelogo.svg`;
-                }
-            }
-            
-            // Set logo initially
-            setLogo();
-            
-            // Update logo on window resize
-            window.addEventListener('resize', setLogo);
-            
-            // Also listen to media query changes for more reliable detection
-            if (window.matchMedia) {
-                const mediaQuery = window.matchMedia('(max-width: 768px)');
-                mediaQuery.addEventListener('change', setLogo);
+            document.addEventListener('mousemove', (e) => {
+                targetX = e.clientX;
+                targetY = e.clientY;
+            });
+
+            // Toggle hover state on interactive elements (house images)
+            const hoverTargets = document.querySelectorAll('.house');
+            hoverTargets.forEach(el => {
+                // Find the parent building container to get the project name
+                const buildingContainer = el.closest('.building-container');
+                const buildingId = buildingContainer ? buildingContainer.id : null;
+                const projectName = buildingId ? projectNames[buildingId] : '';
+                
+                el.addEventListener('mouseenter', () => {
+                    cursorText.textContent = projectName;
+                    cursor.classList.add('is-hovering');
+                });
+                el.addEventListener('mouseleave', () => {
+                    cursor.classList.remove('is-hovering');
+                });
+            });
+
+            // Set logo
+            const titleImg = document.querySelector('.title');
+            if (titleImg) {
+                titleImg.src = 'resources/namelogo.svg';
             }
             
             // Handle background video loading for Chrome compatibility
@@ -851,7 +722,7 @@
     <video class="background-video" autoplay loop muted playsinline webkit-playsinline preload="auto">
         <source src="resources/clouds.mp4" type="video/mp4">
     </video>
-    <img src="" class="title" alt="Title">
+    <img src="resources/namelogo.svg" class="title" alt="Title">
     <div class="background"></div>
     <div class="scene-container">
         <div id="anni-building" class="building-container">
@@ -885,9 +756,6 @@
         
         <img src="resources/car.png" class="car" id="car" alt="Car">
         <div class="ground loading"></div>
-    </div>
-    <div class="loading-indicator" id="loading-indicator">
-        <div class="loading-indicator-fill" id="loading-indicator-fill"></div>
     </div>
 </body>
 </html>
